@@ -9,11 +9,7 @@ Adafruit_DS3502 ds3502 = Adafruit_DS3502();
 
 #define WIPER_VALUE_PIN A0
 
-void setup() {
-  Serial.begin(115200);
-  // Wait until serial port is opened
-  while (!Serial) { delay(1); }
-
+void potentiometerSetup() {
   Serial.println("Adafruit DS3502 Test");
 
   if (!ds3502.begin()) {
@@ -23,7 +19,7 @@ void setup() {
   Serial.println("Found DS3502 chip");
 }
 
-void loop() {
+void potentiometerLoop() {
   Serial.print("Wiper voltage with wiper set to 0: ");
   ds3502.setWiper(0);
   float wiper_value = analogRead(WIPER_VALUE_PIN);
@@ -56,4 +52,18 @@ void loop() {
 
   Serial.println();
   delay(1000);
+}
+
+void setup() {
+  Serial.begin(115200);
+  // Wait until serial port is opened
+  while (!Serial) { delay(1); }
+
+  potentiometerSetup();
+
+  Serial.println("After potentiometerSetup(), inside setup()");
+}
+
+void loop() {
+  potentiometerLoop();
 }
