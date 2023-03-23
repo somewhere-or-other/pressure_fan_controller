@@ -4,7 +4,7 @@
 
 #define FANMIN 0
 #define FANMAX 127
-#define PRESSURETOLERANCE 0.5
+#define PRESSURETOLERANCE 2.0
 #define PRESSURESETPOINT 0.0
 #define PRESSUREMIN 0.0
 #define PRESSUREMAX 100.0 //corresponds to maximum fan output
@@ -118,6 +118,8 @@ int floatToIntMap(float x, float in_min, float in_max, int out_min, int out_max)
 int getPotentiometerSetting(float differentialPressure) {
   if ((differentialPressure-PRESSURESETPOINT) <= PRESSURETOLERANCE) { // If pressure is at or below PRESSURESETPOINT (within PRESSURETOLERANCE)
     return FANMIN;
+  } else if (differentialPressure > (PRESSURESETPOINT-PRESSURETOLERANCE)) {
+    return FANMAX;
   } else {
     // TODO: this is where to integrate the PID controller mapping
     return floatToIntMap(differentialPressure, PRESSUREMIN, PRESSUREMAX, FANMIN, FANMAX);
@@ -142,4 +144,4 @@ void loop() {
   delay(500);
   
 
-}
+} 
