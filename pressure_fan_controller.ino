@@ -1,4 +1,8 @@
 #include <Adafruit_DS3502.h>
+#include <Wire.h>
+#include <sdpsensor.h>
+
+SDP8XXSensor sdp;
 
 Adafruit_DS3502 ds3502 = Adafruit_DS3502();
 /* For this example, make the following connections:
@@ -54,16 +58,42 @@ void potentiometerLoop() {
   delay(1000);
 }
 
+void sdpSetup() {
+  Wire.begin();
+  return;
+}
+
+void sdpLoop() {
+  int ret = sdp.readSample();
+  if (ret == 0) {
+    Serial.print("Differential pressure: ");
+    Serial.print(sdp.getDifferentialPressure());
+    Serial.print("Pa | ");
+
+    Serial.print("Temp: ");
+    Serial.print(sdp.getTemperature());
+    Serial.print("C\n");
+  } else {
+    Serial.print("Error in readSample(), ret = ");
+    Serial.println(ret);
+  }
+
+  delay(500);  
+}
+
 void setup() {
   Serial.begin(115200);
   // Wait until serial port is opened
   while (!Serial) { delay(1); }
 
-  potentiometerSetup();
+  // potentiometerSetup();
 
-  Serial.println("After potentiometerSetup(), inside setup()");
+  sdpSetup();
+
 }
 
 void loop() {
-  potentiometerLoop();
+  // potentiometerLoop();
+
+  sdpLoop();
 }
