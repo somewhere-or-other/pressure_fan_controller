@@ -1,6 +1,6 @@
-#include <Adafruit_DS3502.h>
-#include <Wire.h>
-#include <sdpsensor.h>
+#include "potentiometer.h"
+#include "pressureSensor.h"
+
 
 #define FANMIN 0
 #define FANMAX 127
@@ -9,38 +9,13 @@
 #define PRESSUREMIN 0.0
 #define PRESSUREMAX 100.0 //corresponds to maximum fan output
 
-SDP8XXSensor sdp;
-
-Adafruit_DS3502 ds3502 = Adafruit_DS3502();
 
 
-void potentiometerSetup() {
-  
-  if (!ds3502.begin()) {
-    Serial.println("Couldn't find DS3502 chip");
-    while (1);
-  }
-  
-}
+Adafruit_DS3502 potentiometer;
 
-
-
-void sdpSetup() {
-  Wire.begin();
-  return;
-}
-
-float sdpGetPressure() {
-  int ret = sdp.readSample();
-  if (ret == 0) {
-    return sdp.getDifferentialPressure();
-  } else {
-    return NULL;
-  }
-}
 
 void setPotentiometer(int set) {
-  ds3502.setWiper(set);
+  potentiometer.setWiper(set);
 }
 
 void outputMapping() {
@@ -86,7 +61,7 @@ void setup() {
 
   //outputMapping(); //To output the current map, as debugging verification
 
-  potentiometerSetup();
+  potentiometer=potentiometerSetup();
   sdpSetup();
 
 }
