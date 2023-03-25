@@ -73,7 +73,7 @@ void loop() {
   float pressure = sdpGetPressure();
   float potentiometerSetting = getPotentiometerSetting(pressure);
 
-  Serial.print("Mesured_pressure: ");
+  Serial.print("Measured_pressure: ");
   Serial.print(pressure);
   Serial.print(" pa | potentiometerSetting: ");
   Serial.println(potentiometerSetting);
