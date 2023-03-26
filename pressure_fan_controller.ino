@@ -73,14 +73,14 @@ void displaySetup() {
   display.print("Fan Speed Controller");
 }
 
-void displayToSerial(float pressure, uint8_t potentiometerSetting) {
+void displayValuesToSerial(float pressure, uint8_t potentiometerSetting) {
   Serial.print("Measured_pressure: ");
   Serial.print(pressure);
   Serial.print(" pa | potentiometerSetting: ");
   Serial.println(potentiometerSetting);
 }
 
-void displayToLCD(float pressure, uint8_t potentiometerSetting) {
+void displayValuesToLCD(float pressure, uint8_t potentiometerSetting) {
   char buffer[LCD_COLUMNS];
   snprintf(buffer, LCD_COLUMNS, "Pressure: %0.2f pa", pressure);
   display.setCursor(1,0);
@@ -110,8 +110,8 @@ void loop() {
 
   potentiometerSet(potentiometerSetting);
 
-  displayToSerial(pressure, potentiometerSetting);
-  displayToLCD(pressure, potentiometerSetting);
+  displayValuesToSerial(pressure, potentiometerSetting);
+  displayValuesToLCD(pressure, potentiometerSetting);
   
   
 
