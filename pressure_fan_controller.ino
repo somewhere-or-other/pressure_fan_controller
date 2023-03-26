@@ -1,6 +1,6 @@
 #include "potentiometer.h"
 #include "pressureSensor.h"
-
+#include "Disp.h"
 
 #define FANMIN 0
 #define FANMAX 127
@@ -12,6 +12,7 @@
 
 
 Adafruit_DS3502 potentiometer;
+// LiquidCrystal_I2C lcd;
 
 
 void setPotentiometer(int set) {
@@ -59,9 +60,12 @@ void setup() {
   // Wait until serial port is opened
   while (!Serial) { delay(1); }
 
+
   //outputMapping(); //To output the current map, as debugging verification
 
-  potentiometer=potentiometerSetup();
+  // lcd = lcdSetup();
+
+  potentiometer = potentiometerSetup();
   sdpSetup();
 
 }
@@ -70,6 +74,8 @@ void loop() {
 
   float pressure = sdpGetPressure();
   float potentiometerSetting = getPotentiometerSetting(pressure);
+
+  // lcdUpdate(lcd, pressure, potentiometerSetting);
 
   Serial.print("Measured_pressure: ");
   Serial.print(pressure);
