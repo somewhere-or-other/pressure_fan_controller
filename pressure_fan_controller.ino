@@ -1,6 +1,5 @@
-#define FANMIN 0
-#define FANMAX 127
-#define PRESSURETOLERANCE 2.0
+#define OUTPUTMIN 0
+#define OUTPUTMAX 127
 #define PRESSURESETPOINT 0.0
 #define PRESSUREMIN 0.0
 #define PRESSUREMAX 100.0 //corresponds to maximum fan output
@@ -24,28 +23,36 @@ SDP8XXSensor sdp;
 Adafruit_DS3502 potentiometer = Adafruit_DS3502();
 
 
+//for PID functionality
+#include <PID_v2.h>
+double Kp = (OUTPUTMAX-OUTPUTMIN)/(PRESSUREMAX-PRESSUREMIN) + OUTPUTMIN;
+double Ki = 0;
+double Kd = 1;
+PID_v2 myPID(Kp, Ki, Kd, PID::Direct);
 
 char buffer[LCD_COLUMNS];
-char floatbuffer[10];
+char doublebuffer[10];
 
 
-float floatMap(float x, float in_min, float in_max, float out_min, float out_max)
+double doubleMap(double x, double in_min, double in_max, double out_min, double out_max)
 {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-float outputPercentageFromSetting(int x) {
-  return floatMap(x, FANMIN, FANMAX, 0, 100);
+double outputPercentageFromSetting(int x) {
+  return doubleMap(x, OUTPUTMIN, OUTPUTMAX, 0, 100);
 }
 
-int getPotentiometerSetting(float differentialPressure) {
-  if (differentialPressure < (PRESSUREMIN+PRESSURETOLERANCE)) { // If pressure is at or below PRESSURESETPOINT (within PRESSURETOLERANCE)
-    return FANMIN;
-  } else if (differentialPressure > (PRESSUREMAX-PRESSURETOLERANCE)) {
-    return FANMAX;
+double getPotentiometerSetting(double differentialPressure) {
+    double output = myPID.Run(differentialPressure); 
+      
+
+  if (output < OUTPUTMIN) {
+    return OUTPUTMIN;
+  } else if (output > OUTPUTMAX) {
+    return OUTPUTMAX;
   } else {
-    // TODO: this is where to integrate the PID controller mapping
-    return floatMap(differentialPressure, PRESSUREMIN, PRESSUREMAX, FANMIN, FANMAX);
+      return output;
   }
 }
 
@@ -64,7 +71,7 @@ void pressureSensorSetup() {
   
 }
 
-float pressureSensorGet() {
+double pressureSensorGet() {
   int ret = sdp.readSample();
   if (ret == 0) {
     return sdp.getDifferentialPressure();
@@ -84,7 +91,7 @@ void displaySetup() {
 
 }
 
-void displayValuesToSerial(float pressure, uint8_t potentiometerSetting) {
+void displayValuesToSerial(double pressure, uint8_t potentiometerSetting) {
   Serial.print("PressureSetpoint_pa:");
   Serial.print(PRESSURESETPOINT);
   Serial.print(",MeasuredPressure_pa:");
@@ -93,18 +100,18 @@ void displayValuesToSerial(float pressure, uint8_t potentiometerSetting) {
   Serial.println(outputPercentageFromSetting(potentiometerSetting));
 }
 
-void displayValuesToLCD(float pressure, uint8_t potentiometerSetting) {
+void displayValuesToLCD(double pressure, uint8_t potentiometerSetting) {
 
-  memset(floatbuffer, '\0' , strlen(floatbuffer));
-  dtostrf(pressure, 7, 2, floatbuffer);
+  memset(doublebuffer, '\0' , strlen(doublebuffer));
+  dtostrf(pressure, 7, 2, doublebuffer);
 
-  snprintf(buffer, LCD_COLUMNS, "Pressure:%s pa", floatbuffer);
+  snprintf(buffer, LCD_COLUMNS, "Pressure:%s pa", doublebuffer);
   display.setCursor(0,2);
   display.print(buffer);
 
-  memset(floatbuffer, '\0', strlen(floatbuffer));
-  dtostrf(outputPercentageFromSetting(potentiometerSetting),7, 2, floatbuffer);
-  snprintf(buffer, LCD_COLUMNS, "Output:  %s %%", floatbuffer);
+  memset(doublebuffer, '\0', strlen(doublebuffer));
+  dtostrf(outputPercentageFromSetting(potentiometerSetting),7, 2, doublebuffer);
+  snprintf(buffer, LCD_COLUMNS, "Output:  %s %%", doublebuffer);
   display.setCursor(0,3);
   display.print(buffer);
   
@@ -116,22 +123,28 @@ void setup() {
   Wire.begin();
 
   memset(buffer, '\0' , strlen(buffer));
-  memset(floatbuffer, '\0' , strlen(floatbuffer));
+  memset(doublebuffer, '\0' , strlen(doublebuffer));
 
   displaySetup();
   pressureSensorSetup();
   potentiometerSetup();
 
+
+  myPID.Start(pressureSensorGet(),  // input
+            OUTPUTMIN,                      // current output
+            PRESSURESETPOINT);                   // setpoint
+            
 }
 
 
 
 void loop() {
 
-  float pressure = pressureSensorGet();
-  float potentiometerSetting = getPotentiometerSetting(pressure);
+  double pressure = pressureSensorGet();
+  double potentiometerSetting = getPotentiometerSetting(pressure);
+  
 
-  potentiometerSet(potentiometerSetting);
+  // potentiometerSet(potentiometerSetting);
 
   displayValuesToSerial(pressure, potentiometerSetting);
   displayValuesToLCD(pressure, potentiometerSetting);
