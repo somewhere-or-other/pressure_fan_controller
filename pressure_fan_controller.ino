@@ -53,7 +53,7 @@ void potentiometerSet(uint8_t setting) {
 }
 
 void pressureSensorSetup() {
-  Wire.begin();
+  
 }
 
 float pressureSensorGet() {
@@ -66,28 +66,36 @@ float pressureSensorGet() {
 }
 
 void displaySetup() {
-  display.backlight(); //turn on backlight
+  display.init();
   display.clear();
+  display.noAutoscroll();
+  display.backlight(); //turn on backlight
 
   display.setCursor(0,0);
   display.print("Fan Speed Controller");
+
 }
 
 void displayValuesToSerial(float pressure, uint8_t potentiometerSetting) {
-  Serial.print("Measured_pressure: ");
+  Serial.print("Measured_pressure_pa:");
   Serial.print(pressure);
-  Serial.print(" pa | potentiometerSetting: ");
+  Serial.print(",potentiometerSetting:");
   Serial.println(potentiometerSetting);
 }
 
 void displayValuesToLCD(float pressure, uint8_t potentiometerSetting) {
+
   char buffer[LCD_COLUMNS];
-  snprintf(buffer, LCD_COLUMNS, "Pressure: %0.2f pa", pressure);
-  display.setCursor(1,0);
+  char floatbuffer[10];
+  memset(floatbuffer, '\0' , strlen(floatbuffer));
+  dtostrf(pressure, 7, 2, floatbuffer);
+
+  snprintf(buffer, LCD_COLUMNS, "Pressure:%s pa", floatbuffer);
+  display.setCursor(0,2);
   display.print(buffer);
 
-  snprintf(buffer, LCD_COLUMNS, "Potentiometer: %u", potentiometerSetting);
-  display.setCursor(2,0);
+  snprintf(buffer, LCD_COLUMNS, "Output: %4u", potentiometerSetting);
+  display.setCursor(0,3);
   display.print(buffer);
   
 }
@@ -95,7 +103,9 @@ void setup() {
   Serial.begin(115200);
   // Wait until serial port is opened
   while (!Serial) { delay(1); }
+  Wire.begin();
 
+  displaySetup();
   pressureSensorSetup();
   potentiometerSetup();
 
