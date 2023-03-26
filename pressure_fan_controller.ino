@@ -24,11 +24,19 @@ SDP8XXSensor sdp;
 Adafruit_DS3502 potentiometer = Adafruit_DS3502();
 
 
+
+char buffer[LCD_COLUMNS];
+char floatbuffer[10];
+
+
 float floatMap(float x, float in_min, float in_max, float out_min, float out_max)
 {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
+float outputPercentageFromSetting(int x) {
+  return floatMap(x, FANMIN, FANMAX, 0, 100);
+}
 
 int getPotentiometerSetting(float differentialPressure) {
   if (differentialPressure < (PRESSUREMIN+PRESSURETOLERANCE)) { // If pressure is at or below PRESSURESETPOINT (within PRESSURETOLERANCE)
@@ -77,16 +85,16 @@ void displaySetup() {
 }
 
 void displayValuesToSerial(float pressure, uint8_t potentiometerSetting) {
-  Serial.print("Measured_pressure_pa:");
+  Serial.print("PressureSetpoint_pa:");
+  Serial.print(PRESSURESETPOINT);
+  Serial.print(",MeasuredPressure_pa:");
   Serial.print(pressure);
-  Serial.print(",potentiometerSetting:");
-  Serial.println(potentiometerSetting);
+  Serial.print(",outputPercent:");
+  Serial.println(outputPercentageFromSetting(potentiometerSetting));
 }
 
 void displayValuesToLCD(float pressure, uint8_t potentiometerSetting) {
 
-  char buffer[LCD_COLUMNS];
-  char floatbuffer[10];
   memset(floatbuffer, '\0' , strlen(floatbuffer));
   dtostrf(pressure, 7, 2, floatbuffer);
 
@@ -94,7 +102,9 @@ void displayValuesToLCD(float pressure, uint8_t potentiometerSetting) {
   display.setCursor(0,2);
   display.print(buffer);
 
-  snprintf(buffer, LCD_COLUMNS, "Output: %4u", potentiometerSetting);
+  memset(floatbuffer, '\0', strlen(floatbuffer));
+  dtostrf(outputPercentageFromSetting(potentiometerSetting),7, 2, floatbuffer);
+  snprintf(buffer, LCD_COLUMNS, "Output:  %s %%", floatbuffer);
   display.setCursor(0,3);
   display.print(buffer);
   
@@ -104,6 +114,9 @@ void setup() {
   // Wait until serial port is opened
   while (!Serial) { delay(1); }
   Wire.begin();
+
+  memset(buffer, '\0' , strlen(buffer));
+  memset(floatbuffer, '\0' , strlen(floatbuffer));
 
   displaySetup();
   pressureSensorSetup();
