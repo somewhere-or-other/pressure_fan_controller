@@ -1,3 +1,5 @@
 (sym_lib_table
-  (lib (name sdp8xx)(type Legacy)(uri ${KIPRJMOD}/lib/sdp8xx.lib)(options "")(descr ""))
+  (version 7)
+  (lib (name "sdp8xx")(type "Legacy")(uri "${KIPRJMOD}/lib/sdp8xx.lib")(options "")(descr ""))
+  (lib (name "pressure_fan_controller-rescue")(type "KiCad")(uri "${KIPRJMOD}/pressure_fan_controller-rescue.kicad_sym")(options "")(descr ""))
 )
