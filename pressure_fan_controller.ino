@@ -1,94 +1,77 @@
-#include <Adafruit_DS3502.h>
-#include <Wire.h>
-#include <sdpsensor.h>
-
-#define FANMIN 0
-#define FANMAX 127
-#define PRESSURETOLERANCE 0.5
+#define OUTPUTMIN 0
+#define OUTPUTMAX 127
 #define PRESSURESETPOINT 0.0
 #define PRESSUREMIN 0.0
 #define PRESSUREMAX 100.0 //corresponds to maximum fan output
 
+#define LCD_I2C_ADDR 0x27
+#define LCD_COLUMNS 20
+#define LCD_ROWS 4
+
+
+//for display
+#include <LiquidCrystal_I2C.h>
+LiquidCrystal_I2C display = LiquidCrystal_I2C(LCD_I2C_ADDR, LCD_COLUMNS, LCD_ROWS); 
+
+//For pressure sensor
+#include <Wire.h>
+#include <sdpsensor.h>
 SDP8XXSensor sdp;
 
-Adafruit_DS3502 ds3502 = Adafruit_DS3502();
-/* For this example, make the following connections:
-    * DS3502 RH to 5V
-    * DS3502 RL to GND
-    * DS3502 RW to the pin specified by WIPER_VALUE_PIN
-*/
+//For potentiometer
+#include <Adafruit_DS3502.h>
+Adafruit_DS3502 potentiometer = Adafruit_DS3502();
 
-#define WIPER_VALUE_PIN A0
+
+//for PID functionality
+#include <PID_v2.h>
+double Kp = (OUTPUTMAX-OUTPUTMIN)/(PRESSUREMAX-PRESSUREMIN) + OUTPUTMIN;
+double Ki = 0;
+double Kd = 1;
+PID_v2 myPID(Kp, Ki, Kd, PID::Direct);
+
+char buffer[LCD_COLUMNS];
+char doublebuffer[10];
+
+
+double doubleMap(double x, double in_min, double in_max, double out_min, double out_max)
+{
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+double outputPercentageFromSetting(int x) {
+  return doubleMap(x, OUTPUTMIN, OUTPUTMAX, 0, 100);
+}
+
+double getPotentiometerSetting(double differentialPressure) {
+    double output = myPID.Run(differentialPressure); 
+      
+
+  if (output < OUTPUTMIN) {
+    return OUTPUTMIN;
+  } else if (output > OUTPUTMAX) {
+    return OUTPUTMAX;
+  } else {
+      return output;
+  }
+}
 
 void potentiometerSetup() {
-  Serial.println("Adafruit DS3502 Test");
-
-  if (!ds3502.begin()) {
-    Serial.println("Couldn't find DS3502 chip");
+  if (!potentiometer.begin()) {
+    Serial.println("Couldn't find potentiometer chip");
     while (1);
   }
-  Serial.println("Found DS3502 chip");
 }
 
-void potentiometerLoop() {
-  Serial.print("Wiper voltage with wiper set to 0: ");
-  ds3502.setWiper(0);
-  float wiper_value = analogRead(WIPER_VALUE_PIN);
-  wiper_value *= 5.0;
-  wiper_value /= 1024;
-  Serial.print(wiper_value);
-  Serial.println(" V");
-
-  Serial.println();
-  delay(1000);
-
-  Serial.print("Wiper voltage with wiper set to 63: ");
-  ds3502.setWiper(63);
-  wiper_value = analogRead(WIPER_VALUE_PIN);
-  wiper_value *= 5.0;
-  wiper_value /= 1024;
-  Serial.print(wiper_value);
-  Serial.println(" V");
-
-  Serial.println();
-  delay(1000);
-
-  Serial.print("Wiper voltage with wiper set to 127: ");
-  ds3502.setWiper(127);
-  wiper_value = analogRead(WIPER_VALUE_PIN);
-  wiper_value *= 5.0;
-  wiper_value /= 1024;
-  Serial.print(wiper_value);
-  Serial.println(" V");
-
-  Serial.println();
-  delay(1000);
+void potentiometerSet(uint8_t setting) {
+  potentiometer.setWiper(setting);
 }
 
-void sdpSetup() {
-  Wire.begin();
-  return;
+void pressureSensorSetup() {
+  
 }
 
-void sdpLoop() {
-  int ret = sdp.readSample();
-  if (ret == 0) {
-    Serial.print("Differential pressure: ");
-    Serial.print(sdp.getDifferentialPressure());
-    Serial.print("Pa | ");
-
-    Serial.print("Temp: ");
-    Serial.print(sdp.getTemperature());
-    Serial.print("C\n");
-  } else {
-    Serial.print("Error in readSample(), ret = ");
-    Serial.println(ret);
-  }
-
-  delay(500);  
-}
-
-float sdpGetPressure() {
+double pressureSensorGet() {
   int ret = sdp.readSample();
   if (ret == 0) {
     return sdp.getDifferentialPressure();
@@ -97,49 +80,78 @@ float sdpGetPressure() {
   }
 }
 
-void setPotentiometer(int set) {
-  ds3502.setWiper(set);
+void displaySetup() {
+  display.init();
+  display.clear();
+  display.noAutoscroll();
+  display.backlight(); //turn on backlight
+
+  display.setCursor(0,0);
+  display.print("Fan Speed Controller");
+
 }
 
+void displayValuesToSerial(double pressure, uint8_t potentiometerSetting) {
+  Serial.print("PressureSetpoint_pa:");
+  Serial.print(PRESSURESETPOINT);
+  Serial.print(",MeasuredPressure_pa:");
+  Serial.print(pressure);
+  Serial.print(",outputPercent:");
+  Serial.println(outputPercentageFromSetting(potentiometerSetting));
+}
+
+void displayValuesToLCD(double pressure, uint8_t potentiometerSetting) {
+
+  memset(doublebuffer, '\0' , strlen(doublebuffer));
+  dtostrf(pressure, 7, 2, doublebuffer);
+
+  snprintf(buffer, LCD_COLUMNS, "Pressure:%s pa", doublebuffer);
+  display.setCursor(0,2);
+  display.print(buffer);
+
+  memset(doublebuffer, '\0', strlen(doublebuffer));
+  dtostrf(outputPercentageFromSetting(potentiometerSetting),7, 2, doublebuffer);
+  snprintf(buffer, LCD_COLUMNS, "Output:  %s %%", doublebuffer);
+  display.setCursor(0,3);
+  display.print(buffer);
+  
+}
 void setup() {
   Serial.begin(115200);
   // Wait until serial port is opened
   while (!Serial) { delay(1); }
+  Wire.begin();
 
+  memset(buffer, '\0' , strlen(buffer));
+  memset(doublebuffer, '\0' , strlen(doublebuffer));
+
+  displaySetup();
+  pressureSensorSetup();
   potentiometerSetup();
-  sdpSetup();
 
+
+  myPID.Start(pressureSensorGet(),  // input
+            OUTPUTMIN,                      // current output
+            PRESSURESETPOINT);                   // setpoint
+            
 }
 
-int floatToIntMap(float x, float in_min, float in_max, int out_min, int out_max) {
-  return (x - in_min) * ((float)out_max - (float)out_min) / (in_max - in_min) + (float)out_min;
-}
 
-int getPotentiometerSetting(float differentialPressure) {
-  if ((differentialPressure-PRESSURESETPOINT) <= PRESSURETOLERANCE) { // If pressure is at or below PRESSURESETPOINT (within PRESSURETOLERANCE)
-    return FANMIN;
-  } else {
-    // TODO: this is where to integrate the PID controller mapping
-    return floatToIntMap(differentialPressure, PRESSUREMIN, PRESSUREMAX, FANMIN, FANMAX);
-  }
-}
 
 void loop() {
-  // potentiometerLoop();
 
-  // sdpLoop();
-
-  float pressure = sdpGetPressure();
-  float potentiometerSetting = getPotentiometerSetting(pressure);
-
-  Serial.print("Mesured_pressure: ");
-  Serial.print(pressure);
-  Serial.print(" pa | potentiometerSetting: ");
-  Serial.println(potentiometerSetting);
-  
-  setPotentiometer(potentiometerSetting);
-
-  delay(500);
+  double pressure = pressureSensorGet();
+  double potentiometerSetting = getPotentiometerSetting(pressure);
   
 
-}
+  // potentiometerSet(potentiometerSetting);
+
+  displayValuesToSerial(pressure, potentiometerSetting);
+  displayValuesToLCD(pressure, potentiometerSetting);
+  
+  
+
+  delay(1000);
+  
+
+} 
